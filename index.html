@@ -1757,45 +1757,9 @@ These override `#pg-updates .vd-range/.vd-conv/.vd-chgd{margin-top:var(--s1)}
 :root{ --up:#07602F; --down:#932D1C; --flat:#8A6A1E; }
 html.dark-mode{ --up:#4ADE80; --down:#F87171; --flat:#E1C278; }
 /* ══ END UP / DOWN / FLAT TOKENS ══ */
-/* ══ GUIDED TOUR ══ ═════════════════════════════════════════════════
-   A bottom sheet, never a mask: the app stays fully usable while it is up. */
-.rrt2{
-  position:fixed;left:10px;right:10px;bottom:calc(78px + env(safe-area-inset-bottom,0px));
-  z-index:10000;padding:15px 17px 13px;border-radius:16px;
-  background:linear-gradient(165deg,rgba(28,23,14,.985),rgba(12,10,6,.99));
-  border:1px solid var(--gold,#C9A227);
-  box-shadow:0 16px 40px rgba(0,0,0,.58);
-  transform:translate3d(0,14px,0);opacity:0;
-  transition:opacity 240ms cubic-bezier(.16,1,.3,1),
-             transform 300ms cubic-bezier(.34,1.4,.64,1);
-}
-.rrt2.on{ opacity:1; transform:translate3d(0,0,0); }
-.rrt2-n{ font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;
-  color:var(--gold,#C9A227);margin-bottom:6px; }
-.rrt2-h{ font-family:"Cinzel",serif;font-size:16px;font-weight:700;color:#F4EAD2;
-  margin:0 0 5px;line-height:1.25; }
-.rrt2-p{ font-size:12.5px;line-height:1.5;color:rgba(255,255,255,.68);margin:0; }
-.rrt2-b{ display:flex;align-items:center;gap:10px;margin-top:13px; }
-.rrt2-skip{ appearance:none;border:0;background:none;cursor:pointer;font:inherit;
-  font-size:12px;font-weight:600;color:rgba(255,255,255,.5);padding:9px 4px; }
-.rrt2-next{ margin-left:auto;appearance:none;border:0;cursor:pointer;font:inherit;
-  font-size:12.5px;font-weight:800;letter-spacing:.03em;padding:9px 22px;border-radius:999px;
-  background:var(--gold,#C9A227);color:#14110A;
-  transition:transform 150ms cubic-bezier(.34,1.4,.64,1); }
-.rrt2-next:active{ transform:scale(.95); }
-/* the pointer: a ring on the element itself — no coordinates to drift */
-.rrt2-mark{
-  position:relative;z-index:3;border-radius:10px;
-  box-shadow:0 0 0 2px var(--gold,#C9A227), 0 0 18px rgba(201,162,39,.5) !important;
-  animation:rrt2Pulse 1.6s ease-in-out infinite;
-}
-@keyframes rrt2Pulse{ 0%,100%{ box-shadow:0 0 0 2px var(--gold,#C9A227), 0 0 14px rgba(201,162,39,.35); }
-                      50%    { box-shadow:0 0 0 2px var(--gold,#C9A227), 0 0 24px rgba(201,162,39,.75); } }
-@media (prefers-reduced-motion: reduce){
-  .rrt2,.rrt2-next{ transition:none !important; }
-  .rrt2-mark{ animation:none !important; }
-}
-/* ══ END GUIDED TOUR ══ */
+/* The guided tour was removed. A TV on a shop wall has nobody to walk through a tutorial,
+   and on a phone it was one more thing between a customer and the rate they came for.
+   Its rrt2Pulse keyframe also animated box-shadow forever, which is a repaint every frame. */
 /* Mukta is not embedded on iOS, so a bare `"Mukta",sans-serif` fell through to San
    Francisco — which has no Devanagari — and the glyphs then came from whatever the
    system picked. Naming the Devanagari faces makes that choice explicit and stable. */
@@ -2578,14 +2542,6 @@ html.dark-mode #pg-updates{
    The held-rate card and the tour sheet were both pinned to the bottom and overlapped;
    the tour sat on top. Measured: card y 625..694, sheet y ~584..734 at 375x812. */
 .rr-hold{ z-index:10002; }                    /* above .rrt2 (10000) — the result always wins */
-html.rr-holding .rrt2{
-  /* --rr-hold-clear is published by grab() from the card's MEASURED height: its own
-     bottom offset + its height + a gap. It has to be measured, not typed: the card grows
-     with the label, with the unit line, and with the S/M/L/XL text size. The 200px is only
-     the fallback for the case where measuring throws. */
-  bottom:calc(var(--rr-hold-clear, 200px) + env(safe-area-inset-bottom,0px));
-}
-@media (prefers-reduced-motion: reduce){ html.rr-holding .rrt2{ transition:none !important; } }
 /* ══ END HELD CARD ABOVE THE TUTORIAL ══ */
 /* ══ TEXT SIZE AT TOP OF DRAWER ══ ══════════════════════════
    Owner picked this position. It reads as its own control rather than a third toggle:
@@ -7760,77 +7716,6 @@ html.rr-signage.rr-fit-overflow .main{ overflow-y:auto !important; }
 
 
 <script>
-/* ── GUIDED TOUR ──────────────────────────────────────────────────────────────
-   Bottom sheet, once per version. It never covers the app: whatever happens in here,
-   the rates stay visible and tappable. Self-destructs after 40s regardless. */
-(function () {
-  try {
-    var KEY = 'rr-tour-v3';
-    try { if (localStorage.getItem(KEY) === '1') return; } catch (_) { return; }
-
-    var STEPS = [
-      { sel: '.td-val, .td-bid',
-        h: 'Hold a rate to keep it still',
-        p: 'Press and hold any rate for a moment. It is captured into a card that does not move, with the time it was taken — useful while you are quoting a customer.' },
-      { sel: '.bnav > *:nth-child(3), .bnav a:nth-child(3)',
-        h: 'Market updates, from our servers',
-        p: 'Tap Updates for the day’s market read, what the chart says, the reports due today and the news — with an EN / हिं switch at the top.' },
-      { sel: '.hamburger',
-        h: 'Text size and theme',
-        p: 'Open this menu for Text Size (S / M / L / XL) and Dark Mode. The app already picks the largest size your phone fits.' }
-    ];
-
-    var box = null, marked = null, i = 0, killer = 0;
-
-    function unmark(){ if (marked) { try { marked.classList.remove('rrt2-mark'); } catch (_) {} marked = null; } }
-    function done(){
-      try { localStorage.setItem(KEY, '1'); } catch (_) {}
-      clearTimeout(killer); unmark();
-      if (box) { box.classList.remove('on');
-        var b = box; box = null;
-        setTimeout(function(){ try { b.remove(); } catch (_) {} }, 400); }
-    }
-    function step(){
-      unmark();
-      while (i < STEPS.length && !document.querySelector(STEPS[i].sel)) i++;
-      if (i >= STEPS.length || !box) { done(); return; }
-      var s = STEPS[i], el = document.querySelector(s.sel);
-      try { el.classList.add('rrt2-mark'); marked = el;
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
-      box.innerHTML =
-          '<div class="rrt2-n">New · ' + (i + 1) + ' of ' + STEPS.length + '</div>'
-        + '<div class="rrt2-h">' + s.h + '</div>'
-        + '<p class="rrt2-p">' + s.p + '</p>'
-        + '<div class="rrt2-b">'
-        +   '<button type="button" class="rrt2-skip">Skip tour</button>'
-        +   '<button type="button" class="rrt2-next">'
-        +     (i === STEPS.length - 1 ? 'Got it' : 'Next') + '</button>'
-        + '</div>';
-      /* both events: on iOS a click on a freshly-written node can be swallowed after a
-         scroll, and a tour whose only button is unreliable is worse than no tour */
-      function bind(cls, fn){
-        var b = box.querySelector(cls); if (!b) return;
-        b.onclick = fn;
-        b.addEventListener('touchend', function(e){ e.preventDefault(); fn(); }, { passive: false });
-      }
-      bind('.rrt2-skip', done);
-      bind('.rrt2-next', function(){ i++; step(); });
-    }
-
-    function start(){
-      if (document.querySelector('.rrt2')) return;
-      box = document.createElement('div');
-      box.className = 'rrt2';
-      document.body.appendChild(box);
-      step();
-      setTimeout(function(){ try { if (box) box.classList.add('on'); } catch (_) {} }, 30);
-      /* hard stop. If anything above wedges, the tour still leaves on its own. */
-      killer = setTimeout(done, 40000);
-    }
-    /* after rates have painted and the notification prompt has had its moment */
-    setTimeout(function(){ try { start(); } catch (_) { done(); } }, 9500);
-  } catch (_) {}
-})();
 </script>
 
 
@@ -8100,11 +7985,19 @@ html.rr-signage.rr-fit-overflow .main{ overflow-y:auto !important; }
     var width=tb.clientWidth||window.innerWidth||1366;
     var cardGap=8;
     var tileWidth=Math.max(1,(width-12-(cardGap*(columns-1)))/columns);
-    var fontScale=state.font/100;
-    var tileScale=state.tile/100;
+    /* fitScale belongs here too, and leaving it out was a real defect: everything driven by
+       setMetrics scaled to 44–48px on a 1080p TV while the PRODUCT tiles stayed pinned at 28px —
+       the GOLD / SILVER / GOLD RTGS headline prices, the most important numbers on the board,
+       ended up the smallest thing on it. They have their own variable set (--rr-product-*)
+       computed here, so they need their own multiplication. */
+    var fontScale=(state.font/100)*fitScale;
+    var tileScale=(state.tile/100)*fitScale;
     var densityScale=count>6?.78:(count>3?.86:1);
-    var labelSize=Math.max(11,Math.min(18*fontScale*densityScale,tileWidth/12));
-    var valueSize=Math.max(15,Math.min(28*fontScale*densityScale,tileWidth/6.5));
+    /* The tileWidth caps stay — they are what stops a number overflowing its own tile — but they
+       have to scale with fit as well, or the cap just becomes the new ceiling and the tiles are
+       stuck again at a different number. */
+    var labelSize=Math.max(11,Math.min(18*fontScale*densityScale,(tileWidth/12)*Math.max(1,fitScale)));
+    var valueSize=Math.max(15,Math.min(28*fontScale*densityScale,(tileWidth/6.5)*Math.max(1,fitScale)));
     var rowSize=(count>6?54:(count>3?58:70))*tileScale;
     var rowPad=(count>6?4:(count>3?5:7))*tileScale;
     var sidePad=Math.max(5,Math.min(12*tileScale,tileWidth*.045));
@@ -8208,68 +8101,136 @@ html.rr-signage.rr-fit-overflow .main{ overflow-y:auto !important; }
      will not fit, the board clips rather than scrolls (see overflow:hidden in the signage CSS):
      at that point the shop has more products than a screen can hold and the honest answer is the
      resizer, not a scrollbar that hides half the rates from anyone standing at the counter. */
-  function fitToScreen(tv){
-    if(!tv){ if(fitScale!==1){ fitScale=1; setMetrics(false); } return; }
-    var main=mainScroller();
+  /* Both halves, together. The board's type comes from two separate systems — setMetrics drives
+     the tables through --rr-display-*, syncProductLayout drives the product tiles through their
+     own --rr-product-*. fitToScreen used to re-run only the first while probing, so it measured a
+     board whose tiles were still carrying the PREVIOUS pass's scale and solved against the wrong
+     height: the tiles then grew afterwards and pushed it to 101%. Measure what will actually be
+     on screen, not half of it. */
+  function applyMetrics(tv){ setMetrics(tv); syncProductLayout(tv); }
+
+  /* ── RE-FIT WHEN THE BOARD CHANGES SHAPE ──────────────────────────────────────────────────
+     apply() runs once and measures once, and at that instant the board genuinely fits. Then the
+     ticker lays out, the special-rate card arrives, a rate packet adds a row — and the height
+     grows behind the engine's back. Measured: the fit believed it had landed while the board was
+     sitting at 101% a second later.
+
+     So the height is observed rather than assumed. Debounced, because a rate packet can touch
+     several rows at once and each one would otherwise trigger its own three-layout solve. */
+  var refitTimer=0, refitRO=0, fitting=false;
+  function watchHeight(){
+    if(refitRO||typeof ResizeObserver!=="function") return;
     var live=document.getElementById("pg-liverate");
-    if(!main||!live||!live.classList.contains("act")) return;
+    if(!live) return;
+    refitRO=new ResizeObserver(function(){
+      /* The fit engine changes the board's height by design — that is its whole job — so without
+         this guard the observer fires on the engine's own corrections, re-enters fitToScreen,
+         resets fitScale to 1 and solves back up to the ceiling. The correction loop and the
+         observer then fight each other and the board settles wherever the last full solve landed,
+         which is exactly the 101% that would not go away however many passes were added. */
+      if(fitting) return;
+      clearTimeout(refitTimer);
+      refitTimer=setTimeout(function(){ fitToScreen(effectiveTV()); },180);
+    });
+    try{ refitRO.observe(live); }catch(e){}
+  }
 
-    var FLOOR=0.20, prev=fitScale;
+  function fitToScreen(tv){
+    if(fitting) return;
+    fitting=true;
+    try{
+      if(!tv){ if(fitScale!==1){ fitScale=1; applyMetrics(false); } return; }
+      var main=mainScroller();
+      var live=document.getElementById("pg-liverate");
+      if(!main||!live||!live.classList.contains("act")) return;
 
-    /* MEASURE THE CONTENT, NOT THE CONTAINER. This was the bug that made the board sit in the
-       top 40% of a 1080p screen: `main.scrollHeight` equals `main.clientHeight` whenever the
-       content fits, because .main stretches to its own box. It can tell you the board is too
-       tall; it can never tell you there is room to spare — so the grow branch never fired even
-       though 437 of 944 pixels were empty. The page element's own height is the honest number. */
-    function contentH(){ return Math.max(live.scrollHeight, Math.ceil(live.getBoundingClientRect().height)); }
+      var FLOOR=0.20, prev=fitScale;
 
-    fitScale=1; setMetrics(tv);
-    var avail=main.clientHeight, h1=contentH();
+      /* MEASURE THE CONTENT, NOT THE CONTAINER. This was the bug that made the board sit in the
+         top 40% of a 1080p screen: `main.scrollHeight` equals `main.clientHeight` whenever the
+         content fits, because .main stretches to its own box. It can tell you the board is too
+         tall; it can never tell you there is room to spare — so the grow branch never fired even
+         though 437 of 944 pixels were empty. The page element's own height is the honest number. */
+      function contentH(){ return Math.max(live.scrollHeight, Math.ceil(live.getBoundingClientRect().height)); }
 
-    /* Nothing worth measuring yet. apply() runs before the first rate packet lands, and on that
-       pass the board is nearly empty: h1 and h2 come back almost equal, `scalable` collapses to
-       zero, and the solve below would take a board that fits perfectly straight down to the 20%
-       floor. That is exactly what happened on the first build of this — ten products rendering at
-       4px. Leave the metrics alone and wait to be called again. */
-    if(avail<120||h1<40){ fitScale=1; setMetrics(tv); overflowState(false); return; }
+      fitScale=1; applyMetrics(tv);
+      /* availH() is a FUNCTION, not a number taken once, and that distinction is the whole bug.
+         setMetrics scales the tickers and headings as well as the board, so growing the fit makes
+         the chrome taller and takes room away from .main: measured, 944px of space at fit 1 became
+         908px at fit 2.2. Reading it once at the start meant the verification loop compared the
+         final height against the space that had existed BEFORE the board grew — so it concluded
+         920 <= 943 and never corrected, while the real figure was 920 in 908 and the last row of
+         each table sat 7px below the fold.
 
-    /* ── AND IT GROWS, NOT ONLY SHRINKS ──────────────────────────────────────────────────
-       The first version returned here the moment the board fitted, which is correct arithmetic
-       and wrong signage. On a 1080p TV the board fitted inside the top 40% of the screen and sat
-       there with a field of empty maroon under it — every rate present, none of them readable
-       from across a shop, and the screenshot made that obvious in a way `overflowsBy: 0` never
-       could. A sign that fits is not the same as a sign that fills.
+         Every measurement of available height is now taken fresh, after the metrics that changed
+         it have been applied. */
+      function availH(){ return main.clientHeight; }
+      var avail=availH(), h1=contentH();
 
-       So the same two-point solve runs either way; the only difference is which direction it
-       lands. The measurement below at f2 is what makes growing safe — it tells us how much of the
-       height actually responds to the metrics, so the solve knows what a bigger f would cost. */
-    var f2 = (h1<=avail-1) ? 1.4 : 0.6;   /* probe upward when there is room, downward when not */
-    fitScale=f2; setMetrics(tv);
-    var h2=contentH();
+      /* Nothing worth measuring yet. apply() runs before the first rate packet lands, and on that
+         pass the board is nearly empty: h1 and h2 come back almost equal, `scalable` collapses to
+         zero, and the solve below would take a board that fits perfectly straight down to the 20%
+         floor. That is exactly what happened on the first build of this — ten products rendering at
+         4px. Leave the metrics alone and wait to be called again. */
+      if(avail<120||h1<40){ fitScale=1; applyMetrics(tv); overflowState(false); return; }
 
-    var scalable=(h1-h2)/(1-f2);
-    if(Math.abs(scalable)<=1){
-      /* Height is all fixed chrome — shrinking the type cannot reach it. Shrinking anyway would
-         make the numbers unreadable and still not fit, so stay at full size and let the overflow
-         path below deal with it honestly. */
-      fitScale=1; setMetrics(tv); overflowState(contentH()>avail-1);
+      /* ── AND IT GROWS, NOT ONLY SHRINKS ──────────────────────────────────────────────────
+         The first version returned here the moment the board fitted, which is correct arithmetic
+         and wrong signage. On a 1080p TV the board fitted inside the top 40% of the screen and sat
+         there with a field of empty maroon under it — every rate present, none of them readable
+         from across a shop, and the screenshot made that obvious in a way `overflowsBy: 0` never
+         could. A sign that fits is not the same as a sign that fills.
+
+         So the same two-point solve runs either way; the only difference is which direction it
+         lands. The measurement below at f2 is what makes growing safe — it tells us how much of the
+         height actually responds to the metrics, so the solve knows what a bigger f would cost. */
+      var f2 = (h1<=avail-1) ? 1.4 : 0.6;   /* probe upward when there is room, downward when not */
+      fitScale=f2; applyMetrics(tv);
+      var h2=contentH();
+
+      var scalable=(h1-h2)/(1-f2);
+      if(Math.abs(scalable)<=1){
+        /* Height is all fixed chrome — shrinking the type cannot reach it. Shrinking anyway would
+           make the numbers unreadable and still not fit, so stay at full size and let the overflow
+           path below deal with it honestly. */
+        fitScale=1; applyMetrics(tv); overflowState(contentH()>avail-1);
+        if(Math.abs(fitScale-prev)>0.005) updatePanel(tv);
+        return;
+      }
+      var fixed=h1-scalable;
+      /* Aim for 97% of the height, not 100%. The product tiles size in quantised steps — their own
+         Math.max/Math.min caps mean a small change in fit does not move them at all — so a solve
+         that targets the last pixel converges on the tables while the tiles stay put and the board
+         lands a percent over. Three percent of headroom absorbs that, and three percent of a TV is
+         not a margin anyone can see.
+
+         CEIL 2.2, not 1: on a 4K panel the board should read from the back of the shop, and the
+         ceiling is only there so a nearly-empty board does not blow one product up to fill a wall. */
+      fitScale=Math.max(FLOOR,Math.min(2.2,(avail*0.97-fixed)/scalable));
+      applyMetrics(tv);
+      avail=availH();          /* the chrome just changed size; so did the room left for the board */
+
+      /* One correction: reflow can hand height back, or take a little more. */
+      /* Then verify, and keep correcting until it holds. ONE correction was not enough, and the
+         reason is worth writing down: `scalable` is measured across a 0.4-wide probe and then
+         extrapolated out as far as 2.2, and height is NOT linear in fit across that range because
+         syncProductLayout clamps the tile type with its own Math.max/Math.min. So the solve
+         overshoots and a single corrective multiply lands short — measured, the board sat at 101%
+         through three separate passes and every one of them believed it had converged.
+
+         Four iterations, each multiplying by target/need, converge geometrically and are bounded.
+         That is a layout apiece, but this runs on resize and on content change, never per frame,
+         and being right is worth four layouts. */
+      var guard=0;
+      while(contentH()>avail-1 && fitScale>FLOOR && guard<4){
+        fitScale=Math.max(FLOOR, fitScale*((avail*0.97)/contentH()));
+        applyMetrics(tv);
+        avail=availH();
+        guard++;
+      }
+      overflowState(contentH()>avail-1);
       if(Math.abs(fitScale-prev)>0.005) updatePanel(tv);
-      return;
-    }
-    var fixed=h1-scalable;
-    /* CEIL 2.2, not 1. On a 4K panel the board should read from the back of the shop, and the
-       ceiling is only there so a nearly-empty board does not blow one product up to fill a wall. */
-    fitScale=Math.max(FLOOR,Math.min(2.2,(avail-2-fixed)/scalable));
-    setMetrics(tv);
-
-    /* One correction: reflow can hand height back, or take a little more. */
-    if(contentH()>avail-1 && fitScale>FLOOR){
-      var need=contentH();
-      fitScale=Math.max(FLOOR, fitScale*((avail-2)/need)*0.99);
-      setMetrics(tv);
-    }
-    overflowState(contentH()>avail-1);
-    if(Math.abs(fitScale-prev)>0.005) updatePanel(tv);
+    }finally{ fitting=false; }
   }
 
   /* ── WHEN IT GENUINELY WILL NOT FIT ──────────────────────────────────────────────────────
@@ -8442,6 +8403,7 @@ html.rr-signage.rr-fit-overflow .main{ overflow-y:auto !important; }
     normalizeDakUnit();
     makeUI();
     apply();
+    watchHeight();
     observeProducts();
     scheduleProductSync();
     var resizeTimer=0;
