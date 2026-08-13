@@ -2855,7 +2855,11 @@ const CONFIG = {
   ifscCode:      "AUBL0002588",
   accountType:   "Current Account",
   upiId:         "",
-  apiKey:        "b273ebcee4b7d0cc8c8b7a27491225c3",
+    /* apiKey removed. It was a 32-hex credential sitting in plaintext in a file served to the
+       public internet and shipped inside App Store binaries — and it was dead: declared once,
+       read nowhere, attached to no request. Deleting the line stops PUBLISHING it; it does not
+       unpublish it. The value is in this repo's git history, in the live page's cache, and in
+       every .ipa already downloaded, so it must be rotated server-side to actually be safe. */
   refreshSecs:   60,
   goldMarginPct:   0.0,
   silverMarginPct: 0.0,
