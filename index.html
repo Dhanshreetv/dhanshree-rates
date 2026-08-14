@@ -530,7 +530,7 @@ html.rr-festive .rr-shoot{ box-shadow:0 0 10px 3px rgba(255,206,150,.75); }
 .b-name{font-family:"Cinzel",serif;font-size:clamp(16px,4.4vw,30px);font-weight:700;background:var(--gold-grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1.5px;text-align:center;}
 .b-since{font-family:"Cinzel",serif;font-size:10px;color:#888;letter-spacing:2px;margin-top:1px;text-align:center;}
 .b-line{display:none;}
-.live-chip{display:flex;align-items:center;gap:3px;background:linear-gradient(180deg,rgba(40,160,80,.30),rgba(20,95,42,.20));border:1px solid rgba(150,240,180,.40);border-radius:20px;padding:3px 8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 2px 8px rgba(0,0,0,.20);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
+.live-chip{display:flex;align-items:center;gap:3px;background:linear-gradient(180deg,rgba(40,160,80,.30),rgba(20,95,42,.20));border:1px solid rgba(150,240,180,.40);border-radius:20px;padding:3px 8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 2px 8px rgba(0,0,0,.20);}  /* PERF: dropped backdrop-filter:blur — this chip contains .live-tape, which animates forever, so the backdrop had to be re-sampled and re-blurred every single frame for the life of the page. Behind a gradient at .30/.20 alpha the blur was not visible anyway. Gurukrupa already dropped it; Dhanshree was missed. */
 .live-dot{width:6px;height:6px;background:#1A6E2E;border-radius:50%;animation:blink 1.4s infinite;}
 .mcx-badge.stale .live-dot{background:#E6A817;animation:none;}
 .mcx-badge.stale .live-txt{color:#E6A817;}
@@ -931,8 +931,17 @@ html.dark-mode .bticker-inner{color:#F5D98A;}
 html.dark-mode .ni .ni-ico svg path,html.dark-mode .ni .ni-ico svg rect,html.dark-mode .ni .ni-ico svg circle,html.dark-mode .ni .ni-ico svg polyline,html.dark-mode .ni .ni-ico svg line{stroke:#9C7C44;}
 .dak-card{box-shadow:var(--shadow-lg);animation:dakIn .5s cubic-bezier(.2,.8,.25,1);}
 .dak-gem{width:13px;height:13px;vertical-align:-2px;margin-right:3px;}
-.dak-shine{position:absolute;top:0;left:-65%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);animation:dakShine 6s ease-in-out infinite;pointer-events:none;z-index:2;}
-@keyframes dakShine{0%,70%{left:-65%}86%,100%{left:135%}}
+.dak-shine{position:absolute;top:0;left:-65%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:translateX(0) skewX(-18deg);animation:dakShine 6s ease-in-out infinite;will-change:transform;pointer-events:none;z-index:2;}
+/* PERF: this used to animate `left`, which is a LAYOUT property — every frame of the sweep
+   re-ran layout for the life of the page. Measured on the live site: 66 layout shifts in 12
+   seconds, and this one element accounted for 0.1504 of a 0.1505 total. Frame rate never
+   dropped, which is why it never looked like jank; the whole board simply drifted constantly,
+   and that is what read as "slow and laggy".
+   translateX is compositor-only: no layout, no paint, identical picture. The distance is not
+   arbitrary — `left` travelled -65%→135%, i.e. 200% of the PARENT's width, while a percentage
+   in translateX resolves against the ELEMENT's own width (55% of the parent). 200/55 = 364%.
+   Gurukrupa already carried this fix; Dhanshree and RRJ were the two that were missed. */
+@keyframes dakShine{0%,70%{transform:translateX(0) skewX(-18deg)}86%,100%{transform:translateX(364%) skewX(-18deg)}}
 @keyframes dakIn{0%{opacity:0;transform:translateY(8px) scale(.985)}100%{opacity:1;transform:none}}
 html.dark-mode .dak-shine{background:linear-gradient(100deg,transparent,rgba(255,225,150,.22),transparent);}
 .dev-sig{text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid rgba(200,148,26,.18);}
